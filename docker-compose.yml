@@ -3,11 +3,10 @@ version: '3.5'
 networks:
   net:
     driver: bridge
-    external: true
     ipam:
       config:
         - subnet: 172.20.10.0/24
-        - gateway: 172.20.10.1
+          gateway: 172.20.10.1
 
 services:
   mariadb:
@@ -25,14 +24,7 @@ services:
       - MYSQL_DATABASE=zabbix
       - MYSQL_USER=zabbix
       - MYSQL_PASSWORD=gM4cL3qizB9E6FuKLWta
-    command: 
-      --character-set-server=utf8
-      --collation-server=utf8_general_ci
-      --init-connect=SET NAMES utf8
-      --innodb_log_file_size=256M
-      --innodb_buffer_pool_size=3GB
-      --max_allowed_packet=20M
-
+    command: --character-set-server=utf8 --collation-server=utf8_general_ci --innodb-log-file-size=64M
 
   zabbix-server:
     container_name: zabbix-server
