@@ -1,0 +1,133 @@
+version: '3.5'
+
+networks:
+  net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.10.0/24
+        - gateway: 172.20.10.1
+
+services:
+  mariadb:
+    container_name: mariadb
+    image: mariadb:latest
+    networks:
+      - net
+    hostname: mariadb
+    ports:
+      - "3306:3306"
+    volumes:
+      - './zabbix/mysql:/var/lib/data'
+    environment:
+      - MYSQL_ROOT_PASSWORD=irKu7Xq6Hn5AqBb3Nxpa
+      - MYSQL_DATABASE=zabbix
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=gM4cL3qizB9E6FuKLWta
+    command: 
+      --character-set-server=utf8
+      --collation-server=utf8_general_ci
+      --init-connect=SET NAMES utf8
+      --innodb_log_file_size=256M
+      --innodb_buffer_pool_size=3GB
+      --max_allowed_packet=20M
+
+
+  zabbix-server:
+    container_name: zabbix-server
+    image: zabbix/zabbix-server-mysql:ubuntu-latest
+    networks:
+      - net
+    hostname: zabbix-server
+    links:
+      - mariadb
+    restart: always
+    ports:
+      - "10051:10051"
+    volumes:
+      - './zabbix/alertscripts:/usr/lib/zabbix/alertscripts'
+    environment:
+      - DB_SERVER_HOST=mariadb
+      - MYSQL_DATABASE=zabbix
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=gM4cL3qizB9E6FuKLWta
+    depends_on:
+      - mariadb
+
+
+  zabbix-frontend:
+    container_name: zabbix-frontend
+    image: zabbix/zabbix-web-apache-mysql:ubuntu-latest
+    networks:
+      - net
+    hostname: zabbix-frontend
+    links:
+      - mariadb
+    restart: always
+    ports:
+      - "81:8080"
+      - "444:8443"
+    environment:
+      - DB_SERVER_HOST=mariadb
+      - MYSQL_DATABASE=zabbix
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=gM4cL3qizB9E6FuKLWta
+      - PHP_TZ=Europe/Athens
+      - ZBX_SERVER_NAME=Zabbix
+    depends_on:
+      - mariadb
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana
+    networks:
+      - net
+    hostname: grafana
+    links:
+      - mariadb
+      - zabbix-server
+    restart: always
+    ports:
+      - "3000:3000"
+    environment: 
+      - GF_INSTALL_PLUGINS=alexanderzobnin-zabbix-app
+    depends_on:
+      - mariadb
+      - zabbix-server
+      
+      
+  zabbix-agent:
+    container_name: zabbix-agent
+    image: zabbix/zabbix-agent2:ubuntu-latest
+    user: root
+    networks:
+      - net
+    hostname: zabbix-agent
+    links:
+      - zabbix-server
+    restart: always
+    privileged: true
+    volumes:
+      - /var/run:/var/run
+    ports:
+      - '10050:10050'
+    environment:
+      - ZBX_HOSTNAME=Zabbix server
+      - ZBX_SERVER_HOST=zabbix-server
+
+
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin/phpmyadmin:latest
+    restart: always
+    networks:
+      - net
+    hostname: phpmyadmin
+    links:
+      - mariadb
+    environment:
+      PMA_HOST: mariadb
+      PMA_USER: root
+      PMA_PASSWORD: irKu7Xq6Hn5AqBb3Nxpa
+    ports:
+      - "8080:80"
